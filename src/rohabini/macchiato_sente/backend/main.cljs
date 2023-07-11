@@ -1,14 +1,15 @@
 (ns rohabini.macchiato-sente.backend.main
-  (:require [macchiato.server                         :as http           ]
-            [taoensso.timbre                          :as logger         ]
-            [taoensso.sente                           :as sente          ]
-            [macchiato.util.response                  :as mres           ]
-            [macchiato.middleware.resource            :as mmr            ]
-            [macchiato.middleware.params              :as mmp            ]
-            [reitit.ring                              :as ring           ]
-            [reitit.ring.coercion                     :as rrc            ]
+  (:require [macchiato.server                         :as http]
+            [taoensso.timbre                          :as logger]
+            [taoensso.sente                           :as sente]
+            [macchiato.util.response                  :as mres]
+            [macchiato.middleware.resource            :as mmr]
+            [macchiato.middleware.params              :as mmp]
+            [macchiato.middleware.keyword-params      :as mmkp]
+            [reitit.ring                              :as ring]
+            [reitit.ring.coercion                     :as rrc]
             [taoensso.sente.server-adapters.macchiato :as sente-macchiato]
-            [hiccups.runtime                                             ])
+            [hiccups.runtime])
   (:require-macros [hiccups.core :refer [html]]))
 
 ;; websockets
@@ -70,6 +71,7 @@
              [html-routes
               ws-routes]
              {:data {:middleware [mmp/wrap-params
+                                  mmkp/wrap-keyword-params
                                   rrc/coerce-request-middleware
                                   rrc/coerce-response-middleware]}}))
 
