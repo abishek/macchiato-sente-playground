@@ -1,15 +1,17 @@
 (ns rohabini.macchiato-sente.backend.main
-  (:require [macchiato.server                         :as http]
-            [taoensso.timbre                          :as logger]
-            [taoensso.sente                           :as sente]
-            [macchiato.util.response                  :as mres]
-            [macchiato.middleware.resource            :as mmr]
-            [macchiato.middleware.params              :as mmp]
-            [macchiato.middleware.keyword-params      :as mmkp]
-            [reitit.ring                              :as ring]
-            [reitit.ring.coercion                     :as rrc]
+  (:require [macchiato.server                         :as http           ]
+            [taoensso.timbre                          :as logger         ]
+            [taoensso.sente                           :as sente          ]
+            [macchiato.util.response                  :as mres           ]
+            [macchiato.middleware.resource            :as mmr            ]
+            [macchiato.middleware.params              :as mmp            ]
+            [macchiato.middleware.keyword-params      :as mmkp           ]
+            [macchiato.middleware.defaults            :as mdef           ]
+            [macchiato.middleware.anti-forgery        :as maf            ]
+            [reitit.ring                              :as ring           ]
+            [reitit.ring.coercion                     :as rrc            ]
             [taoensso.sente.server-adapters.macchiato :as sente-macchiato]
-            [hiccups.runtime])
+            [hiccups.runtime                                             ])
   (:require-macros [hiccups.core :refer [html]]))
 
 ;; websockets
@@ -23,8 +25,30 @@
   (def chsk-send!               send-fn)
   (def connected-uids           connected-uids))
 
-(defn event-msg-handler [msg]
-  (logger/info msg))
+(def string-list ["hello, world"
+                  "how can I help you today?"
+                  "sorry, I don't think I understand that."
+                  "Would you like me to call instead?"])
+
+(defmulti -event-msg-handler :id)
+
+(defmethod -event-msg-handler :default
+  [{:as ev-msg :keys [event id ?data ring-req ?reply-fn send-fn]}]
+  (let [session (:session ring-req)
+        uid (:uid session)]
+    (logger/debugf "Unhandled event: %s" event)
+    (when ?reply-fn
+      (?reply-fn {:unmatched-event-as-echoed-from-server event}))))
+
+(defmethod -event-msg-handler :demo/btn-get-msg
+  [{:as ev-msg :keys [event id ?data ring-req ?reply-fn send-fn]}]
+  (let [session (:session ring-req)
+        uid (:uid session)]
+    (logger/debugf "%s" ev-msg)
+    (?reply-fn {:message (rand-nth string-list)})))
+
+(defn event-msg-handler [{:as ev-msg :keys [id ?data event]}]
+  (-event-msg-handler ev-msg))
 
 (defn stop-ws! []
   (when-let [stop-ws-fn @ws-server]
@@ -37,7 +61,8 @@
 
 
 ;; router and simple html delivery
-(def home-page-html
+(defn home-page-html []
+  (let [csrf-token maf/*anti-forgery-token*]
   [:html
    [:head
     [:title "Macchiato Sente Example"]
@@ -49,14 +74,15 @@
             :rel "stylesheet"
             :type "text/css"}]]
    [:body
+    [:input#csrf {:type "hidden" :value csrf-token}]
     [:div#app
      [:h4 "App Loads Here."]]
     [:script {:src "/js/client.js"
               :type "text/javascript"}]
-    [:script "rohabini.macchiato_sente.frontend.main.init()"]]])
+    [:script "rohabini.macchiato_sente.frontend.main.init()"]]]))
 
 (defn home-page [req res raise]
-  (-> home-page-html
+  (-> (home-page-html)
       (html)
       (mres/ok)
       (mres/content-type "text/html")
@@ -72,12 +98,14 @@
               ws-routes]
              {:data {:middleware [mmp/wrap-params
                                   mmkp/wrap-keyword-params
+                                  maf/wrap-anti-forgery
                                   rrc/coerce-request-middleware
                                   rrc/coerce-response-middleware]}}))
 
 (def route-handler (ring/ring-handler router))
 (def app (-> route-handler
-             (mmr/wrap-resource "resources/public")))
+             (mmr/wrap-resource "resources/public")
+             (mdef/wrap-defaults mdef/site-defaults)))
 
 ;; web and websocket servers
 
@@ -95,5 +123,5 @@
                  :on-sockets  #(logger/info "Started.")}
         server  (http/start options)]
     (start-ws!)
-    (http/start-ws server app)
+    (http/start-ws server app) 
     (reset! http-server {:stop-fn #(.end server)})))
