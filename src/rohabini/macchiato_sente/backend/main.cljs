@@ -1,34 +1,37 @@
 (ns rohabini.macchiato-sente.backend.main
-  (:require [macchiato.server                         :as http           ]
-            [taoensso.timbre                          :as logger         ]
-            [taoensso.sente                           :as sente          ]
-            [macchiato.util.response                  :as mres           ]
-            [macchiato.middleware.resource            :as mmr            ]
-            [macchiato.middleware.params              :as mmp            ]
-            [macchiato.middleware.keyword-params      :as mmkp           ]
-            [macchiato.middleware.defaults            :as mdef           ]
-            [macchiato.middleware.anti-forgery        :as maf            ]
-            [reitit.ring                              :as ring           ]
-            [reitit.ring.coercion                     :as rrc            ]
+  (:require [macchiato.server                         :as http]
+            [taoensso.timbre                          :as logger]
+            [taoensso.sente                           :as sente]
+            [macchiato.util.response                  :as mres]
+            [macchiato.middleware.resource            :as mmr]
+            [macchiato.middleware.params              :as mmp]
+            [macchiato.middleware.keyword-params      :as mmkp]
+            [macchiato.middleware.defaults            :as mdef]
+            [macchiato.middleware.anti-forgery        :as maf]
+            [reitit.ring                              :as ring]
+            [reitit.ring.coercion                     :as rrc]
             [taoensso.sente.server-adapters.macchiato :as sente-macchiato]
-            [hiccups.runtime                                             ])
+            [clojure.core.async                       :as async :refer [<! go-loop]]
+            [hiccups.runtime])
   (:require-macros [hiccups.core :refer [html]]))
 
 ;; websockets
 (defonce ws-server (atom nil))
 (let [packer :edn
       {:keys [ch-recv send-fn ajax-post-fn ajax-get-or-ws-handshake-fn connected-uids]}
-      (sente-macchiato/make-macchiato-channel-socket-server! {:packer packer})]
+      (sente-macchiato/make-macchiato-channel-socket-server! {:packer packer
+                                                              :user-id-fn (fn [ring-req] (:client-id ring-req))})]
   (def ajax-post                ajax-post-fn)
   (def ajax-get-or-ws-handshake ajax-get-or-ws-handshake-fn)
   (def ch-chsk                  ch-recv)
   (def chsk-send!               send-fn)
   (def connected-uids           connected-uids))
 
-(def string-list ["hello, world"
-                  "how can I help you today?"
-                  "sorry, I don't think I understand that."
-                  "Would you like me to call instead?"])
+(defn send-messages [uid]
+  (go-loop [i 0]
+    (<! (async/timeout 10000))
+    (chsk-send! uid [:demo/default-message "this is a server initiated message"])
+    (recur (inc i))))
 
 (defmulti -event-msg-handler :id)
 
@@ -41,11 +44,8 @@
       (?reply-fn {:unmatched-event-as-echoed-from-server event}))))
 
 (defmethod -event-msg-handler :demo/btn-get-msg
-  [{:as ev-msg :keys [event id ?data ring-req ?reply-fn send-fn]}]
-  (let [session (:session ring-req)
-        uid (:uid session)]
-    (logger/debugf "%s" ev-msg)
-    (?reply-fn {:message (rand-nth string-list)})))
+  [{:as ev-msg :keys [event id uid ?data ring-req ?reply-fn send-fn]}]
+  (send-messages uid))
 
 (defn event-msg-handler [{:as ev-msg :keys [id ?data event]}]
   (-event-msg-handler ev-msg))
@@ -63,23 +63,23 @@
 ;; router and simple html delivery
 (defn home-page-html []
   (let [csrf-token maf/*anti-forgery-token*]
-  [:html
-   [:head
-    [:title "Macchiato Sente Example"]
-    [:meta {:name "viewport"
-            :content "minimum-scale=1,initial-scale=1,width=device-width"}]
-    [:meta {:name "description"
-            :content "Macchiato Application Example to use Sente websockets."}]
-    [:link {:href "/css/styles.css"
-            :rel "stylesheet"
-            :type "text/css"}]]
-   [:body
-    [:input#csrf {:type "hidden" :value csrf-token}]
-    [:div#app
-     [:h4 "App Loads Here."]]
-    [:script {:src "/js/client.js"
-              :type "text/javascript"}]
-    [:script "rohabini.macchiato_sente.frontend.main.init()"]]]))
+    [:html
+     [:head
+      [:title "Macchiato Sente Example"]
+      [:meta {:name "viewport"
+              :content "minimum-scale=1,initial-scale=1,width=device-width"}]
+      [:meta {:name "description"
+              :content "Macchiato Application Example to use Sente websockets."}]
+      [:link {:href "/css/styles.css"
+              :rel "stylesheet"
+              :type "text/css"}]]
+     [:body
+      [:input#csrf {:type "hidden" :value csrf-token}]
+      [:div#app
+       [:h4 "App Loads Here."]]
+      [:script {:src "/js/client.js"
+                :type "text/javascript"}]
+      [:script "rohabini.macchiato_sente.frontend.main.init()"]]]))
 
 (defn home-page [req res raise]
   (-> (home-page-html)
@@ -93,7 +93,7 @@
                            :post ajax-post
                            :ws   ajax-get-or-ws-handshake}])
 
-(def router (ring/router 
+(def router (ring/router
              [html-routes
               ws-routes]
              {:data {:middleware [mmp/wrap-params
@@ -123,5 +123,5 @@
                  :on-sockets  #(logger/info "Started.")}
         server  (http/start options)]
     (start-ws!)
-    (http/start-ws server app) 
+    (http/start-ws server app)
     (reset! http-server {:stop-fn #(.end server)})))

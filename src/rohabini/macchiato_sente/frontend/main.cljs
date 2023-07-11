@@ -15,9 +15,9 @@
 
 (let [chsk-type :auto
       packer    :edn
-      {:keys [chsk ch-recv send-fn state]} 
-      (sente/make-channel-socket-client! "/chsk" csrf-token {:type chsk-type 
-                                                  :packer packer})]
+      {:keys [chsk ch-recv send-fn state]}
+      (sente/make-channel-socket-client! "/chsk" csrf-token {:type chsk-type
+                                                             :packer packer})]
   (def chsk       chsk   )
   (def ch-chsk    ch-recv)
   (def chsk-send! send-fn)
