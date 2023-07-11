@@ -5,3 +5,5 @@ node_modules
 resources/public/js
 target
 .calva
+release
+.lsp
