@@ -1,0 +1,36 @@
+{
+    "name": "macchiato-sente-demo",
+    "version": "0.1.0",
+    "description": "A simple project to explore sente websockets within macchiato applications.",
+    "author": {
+        "name": "Abishek Goda",
+        "email": "abishek.goda@hey.com",
+        "url": "https://github.com/abishek"
+    },
+    "scripts": {
+        "build:backend": "shadow-cljs watch backend",
+        "build:frontend": "shadow-cljs watch frontend",
+        "build": "run-p build:*"
+    },
+    "license": "MIT",
+    "devDependencies": {
+        "shadow-cljs": "^2.24.1",
+        "source-map-support": "^0.5.21",
+        "npm-run-all": "^4.1.5",
+        "watch": "0.13.0"
+    },
+    "dependencies": {
+        "react": "^17",
+        "react-dom": "^17",
+        "concat-stream": "^2.0.0",
+        "etag": "^1.8.1",
+        "cookies": "^0.8.0",
+        "multiparty": "^4.2.3",
+        "random-bytes": "^1.0.0",
+        "qs": "^6.11.2",
+        "simple-encryptor": "^4.0.0",
+        "xregexp": "^5.1.1",
+        "content-type": "^1.0.5",
+        "lru": "^3.1.0"
+    }
+}

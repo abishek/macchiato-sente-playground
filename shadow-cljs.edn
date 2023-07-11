@@ -1,0 +1,13 @@
+{:deps true
+ :builds {:backend {:target :node-script
+                    :output-to "target/main.js"
+                    :main rohabini.macchiato-sente.backend.main/main!
+                    :devtools {:after-load rohabini.macchiato-sente.backend.main/reload!}
+                    :release {:compiler-options {:optimizations :simple
+                                                 :output-to "release/main.js"}}}
+          :frontend {:target :browser
+                     :output-dir "resources/public/js"
+                     :asset-path "/js"
+                     :main rohanini.macchiato-sente.frontend.main/init
+                     :modules {:client {:entries [rohabini.macchiato-sente.frontend.main]}}
+                     :release {:output-dir "release/public/js"}}}}

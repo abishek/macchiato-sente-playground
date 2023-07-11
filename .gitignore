@@ -1,0 +1,6 @@
+.shadow-cljs
+node_modules
+.clj-kondo
+.cpcache
+resources/public/js
+target

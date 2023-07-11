@@ -1,0 +1,17 @@
+html, body {
+    background-color: ghostwhite;
+    color: gray;
+    width: 100%;
+    font-size: medium;
+    font-weight: normal;
+}
+
+div#app {
+    display: flex;
+    height: 100%;
+    align-items: center;
+    justify-content: center;
+}
+h1.heading {
+    font-stretch: expanded;
+}
