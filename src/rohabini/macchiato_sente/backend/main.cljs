@@ -94,5 +94,6 @@
                  :websockets? true
                  :on-sockets  #(logger/info "Started.")}
         server  (http/start options)]
+    (start-ws!)
     (http/start-ws server app)
     (reset! http-server {:stop-fn #(.end server)})))

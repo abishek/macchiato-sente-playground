@@ -1,6 +1,8 @@
 # Example Macchiato Project With Sente Websockets
 
-Macchiato doesn't play very well with Sente (or maybe its the other way). This project is a playground to explore a quick patch between the two libraries.
+~~Macchiato doesn't play very well with Sente (or maybe its the other way). This project is a playground to explore a quick patch between the two libraries.~~
+
+This project explores adding sente websockets to a macchiato application.
 
 ## Requirements
 
