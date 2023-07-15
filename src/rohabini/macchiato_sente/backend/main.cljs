@@ -9,7 +9,7 @@
             [macchiato.middleware.defaults            :as mdef]
             [macchiato.middleware.anti-forgery        :as maf]
             [reitit.ring                              :as ring]
-            [reitit.ring.coercion                     :as rrc]
+            [reitit.ring.coercion                     :as rrc] 
             [taoensso.sente.server-adapters.macchiato :as sente-macchiato]
             [clojure.core.async                       :as async :refer [<! go-loop]]
             [hiccups.runtime])
@@ -19,19 +19,23 @@
 (defonce ws-server (atom nil))
 (let [packer :edn
       {:keys [ch-recv send-fn ajax-post-fn ajax-get-or-ws-handshake-fn connected-uids]}
-      (sente-macchiato/make-macchiato-channel-socket-server! {:packer packer
-                                                              :user-id-fn (fn [ring-req] (:client-id ring-req))})]
+      (sente-macchiato/make-macchiato-channel-socket-server! {:packer packer})]
   (def ajax-post                ajax-post-fn)
   (def ajax-get-or-ws-handshake ajax-get-or-ws-handshake-fn)
   (def ch-chsk                  ch-recv)
   (def chsk-send!               send-fn)
   (def connected-uids           connected-uids))
 
-(defn send-messages [uid]
-  (go-loop [i 0]
-    (<! (async/timeout 10000))
-    (chsk-send! uid [:demo/default-message "this is a server initiated message"])
-    (recur (inc i))))
+(defn fetch-random-user [cbfn]
+  (-> (js/fetch "https://random-data-api.com/api/v2/users?size=2")
+      (.then #(.json %))
+      ;(.then #(js->clj %))
+      (.then #(cbfn {:data %}))))
+
+(def string-list ["hello, world"
+                  "how can I help you today?"
+                  "sorry, I don't think I understand that."
+                  "Would you like me to call instead?"])
 
 (defmulti -event-msg-handler :id)
 
@@ -45,7 +49,7 @@
 
 (defmethod -event-msg-handler :demo/btn-get-msg
   [{:as ev-msg :keys [event id uid ?data ring-req ?reply-fn send-fn]}]
-  (send-messages uid))
+  (fetch-random-user ?reply-fn))
 
 (defn event-msg-handler [{:as ev-msg :keys [id ?data event]}]
   (-event-msg-handler ev-msg))
